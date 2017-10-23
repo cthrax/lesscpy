@@ -77,7 +77,7 @@ class LessParser(object):
                  tabfile='yacctab',
                  yacc_debug=False,
                  scope=None,
-                 outputdir=tempfile.gettempdir(),
+                 outputdir=None,
                  importlvl=0,
                  verbose=False,
                  fail_with_exc=False
@@ -96,6 +96,9 @@ class LessParser(object):
                 fail_with_exc (bool): Throw exception on syntax error instead
                                       of printing to stderr
         """
+        if outputdir is None:
+            outputdir = tempfile.gettempdir()
+
         self.verbose = verbose
         self.importlvl = importlvl
         self.lex = lexer.LessLexer()
@@ -107,14 +110,21 @@ class LessParser(object):
 
         self.tokens = [t for t in self.lex.tokens
                        if t not in self.ignored]
-        self.parser = ply.yacc.yacc(
-            module=self,
-            start='tunit',
-            debug=yacc_debug,
-            optimize=yacc_optimize,
-            tabmodule=tabfile,
-            outputdir=outputdir
-        )
+
+        yacc_options = {
+            "module": self,
+            "start": "tunit",
+            "debug": yacc_debug,
+            "optimize": yacc_optimize
+        }
+
+        if outputdir:
+            yacc_options["tabmodule"] = tabfile
+            yacc_options["outputdir"] = outputdir
+        else:
+            yacc_options["write_tables"] = False
+
+        self.parser = ply.yacc.yacc(**yacc_options)
         self.scope = scope if scope else Scope()
         self.stash = {}
         self.result = None
